@@ -11,6 +11,7 @@ type JobRepositoryInterface interface {
 	FindById(id string) (entity.Job, error)
 	Update(id string, data entity.Job) error
 	Delete(id string) error
+	GetNotDone() (entity.Jobs, error)
 }
 
 type JobRepository struct{}
@@ -48,4 +49,11 @@ func (j *JobRepository) Delete(id string) error {
 
 	err := database.Instance.Delete(&job, "id = ?", id)
 	return err.Error
+}
+
+func (j *JobRepository) GetNotDone() (entity.Jobs, error) {
+	var jobs entity.Jobs
+
+	err := database.Instance.Where("status = 0").Order("created_at desc").Find(&jobs)
+	return jobs, err.Error
 }

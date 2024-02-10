@@ -121,7 +121,7 @@ func (j *JobService) EnqueueJob() <-chan ChanResult {
 	chanOut := make(chan ChanResult)
 
 	go func() {
-		jobs, err := jobRepository.All()
+		jobs, err := jobRepository.GetNotDone()
 
 		if err != nil {
 			log.Error(err)
