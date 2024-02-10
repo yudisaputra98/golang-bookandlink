@@ -15,9 +15,10 @@ func Route() {
 		job := route.Group("/jobs")
 		{
 			job.GET("", jobHandler.All)
+			job.POST("", jobHandler.Create)
+			job.GET("/generate", jobHandler.Generate)
 			job.GET("/:id", jobHandler.FindById)
 			job.POST("/:id", jobHandler.Update)
-			job.POST("", jobHandler.Create)
 			job.GET("/:id", jobHandler.Delete)
 		}
 	}

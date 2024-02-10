@@ -1,8 +1,10 @@
 package services
 
 import (
+	"fmt"
 	"github.com/yudisaputra/assignment-bookandlink/app/job/entity"
 	"github.com/yudisaputra/assignment-bookandlink/app/job/repository"
+	"github.com/yudisaputra/assignment-bookandlink/database"
 	"github.com/yudisaputra/assignment-bookandlink/helpers"
 	"github.com/yudisaputra/assignment-bookandlink/responses"
 	"gorm.io/gorm"
@@ -16,6 +18,7 @@ type JobServiceInterface interface {
 	FindById(id string) responses.Api
 	Update(id string, data entity.Job) responses.Api
 	Delete(id string) responses.Api
+	Generate(total int) responses.Api
 }
 
 type JobService struct{}
@@ -83,4 +86,23 @@ func (j *JobService) Delete(id string) responses.Api {
 	}
 
 	return responses.Api{Code: 200, Status: true, Message: "Job berhasil dihapus"}
+}
+
+func (j *JobService) Generate(total int) responses.Api {
+	database.Instance.Migrator().DropTable("jobs")
+	database.Instance.AutoMigrate(&entity.Job{})
+
+	for i := 1; i <= total; i++ {
+		err := jobRepository.Create(entity.Job{
+			ID:      helpers.Uid(16),
+			JobName: fmt.Sprint("Generate job ", i),
+			Status:  0,
+		})
+
+		if err != nil {
+			return responses.Api{Code: 400, Status: false, Message: nil, Error: err.Error(), Data: nil}
+		}
+	}
+
+	return responses.Api{Code: 200, Status: true, Message: "Job berhasil dibuat"}
 }

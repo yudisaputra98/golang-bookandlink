@@ -66,3 +66,8 @@ func (j *JobHandler) Delete(ctx echo.Context) error {
 
 	return ctx.JSON(data.Code, data)
 }
+
+func (j *JobHandler) Generate(ctx echo.Context) error {
+	data := jobService.Generate(50)
+	return ctx.JSON(data.Code, data)
+}
