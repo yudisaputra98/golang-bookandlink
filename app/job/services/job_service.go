@@ -7,7 +7,6 @@ import (
 	"github.com/yudisaputra/assignment-bookandlink/app/job/repository"
 	entity2 "github.com/yudisaputra/assignment-bookandlink/app/process/entity"
 	repository2 "github.com/yudisaputra/assignment-bookandlink/app/process/repository"
-	"github.com/yudisaputra/assignment-bookandlink/database"
 	"github.com/yudisaputra/assignment-bookandlink/helpers"
 	"github.com/yudisaputra/assignment-bookandlink/responses"
 	"gorm.io/gorm"
@@ -99,13 +98,13 @@ func (j *JobService) Delete(id string) responses.Api {
 }
 
 func (j *JobService) Generate(total int) responses.Api {
-	database.Instance.Migrator().DropTable("jobs")
-	database.Instance.AutoMigrate(&entity.Job{})
+	//database.Instance.Migrator().DropTable("jobs")
+	//database.Instance.AutoMigrate(&entity.Job{})
 
 	for i := 1; i <= total; i++ {
 		err := jobRepository.Create(entity.Job{
 			ID:      helpers.Uid(16),
-			JobName: fmt.Sprint("Generate job ", i),
+			JobName: fmt.Sprint("Generate job ", helpers.Uid(20)),
 			Status:  0,
 		})
 
@@ -135,6 +134,14 @@ func (j *JobService) EnqueueJob() <-chan ChanResult {
 
 			if err != nil {
 				log.Error(err)
+			}
+
+			err2 := jobRepository.Update(v.ID, entity.Job{
+				Status: 1,
+			})
+
+			if err2 != nil {
+				log.Error(err2)
 			}
 		}
 

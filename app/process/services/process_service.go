@@ -10,7 +10,7 @@ import (
 	"github.com/yudisaputra/assignment-bookandlink/helpers"
 	"github.com/yudisaputra/assignment-bookandlink/responses"
 	"gorm.io/gorm"
-	"time"
+	"sync"
 )
 
 var processRepository = repository2.NewProcessRepository()
@@ -23,6 +23,7 @@ type ProcessServiceInterface interface {
 	Update(id string, data entity2.Process) responses.Api
 	Delete(id string) responses.Api
 	ProcessJob(chanIn <-chan services.ChanResult) <-chan services.ChanResult
+	MergeChan(chanInMany ...<-chan services.ChanResult) <-chan services.ChanResult
 }
 
 type ProcessService struct{}
@@ -90,6 +91,28 @@ func (j *ProcessService) Delete(id string) responses.Api {
 	return responses.Api{Code: 200, Status: true, Message: "Job berhasil dihapus"}
 }
 
+func (j *ProcessService) MergeChan(chanInMany ...<-chan services.ChanResult) <-chan services.ChanResult {
+	wg := new(sync.WaitGroup)
+	chanOut := make(chan services.ChanResult)
+
+	wg.Add(len(chanInMany))
+	for _, eachChan := range chanInMany {
+		go func(eachChan <-chan services.ChanResult) {
+			for eachChanData := range eachChan {
+				chanOut <- eachChanData
+			}
+			wg.Done()
+		}(eachChan)
+	}
+
+	go func() {
+		wg.Wait()
+		close(chanOut)
+	}()
+
+	return chanOut
+}
+
 func (j *ProcessService) ProcessJob(chanIn <-chan services.ChanResult) <-chan services.ChanResult {
 	chanOut := make(chan services.ChanResult)
 
@@ -102,25 +125,33 @@ func (j *ProcessService) ProcessJob(chanIn <-chan services.ChanResult) <-chan se
 
 		for chanProcess := range chanIn {
 			if chanProcess.Status == true {
-				for k, v := range jobs {
+				for _, v := range jobs {
 					err := jobRepository.Update(v.ID, entity.Job{
-						Status: 1,
+						Status: 2,
 					})
 
 					if err != nil {
 						log.Error(err)
+
+						err2 := jobRepository.Update(v.ID, entity.Job{
+							Status: 0,
+						})
+
+						if err2 != nil {
+							log.Error(err2)
+						}
 					}
 
 					// delete process
-					err2 := processRepository.Delete(v.ID)
+					err3 := processRepository.Delete(v.ID)
 
-					if err2 != nil {
-						log.Error(err2)
+					if err3 != nil {
+						log.Error(err3)
 					}
 
-					if 4 == k%5 {
-						time.Sleep(3 * time.Second)
-					}
+					//if 4 == k%5 {
+					//	time.Sleep(2 * time.Second)
+					//}
 				}
 
 				chanOut <- services.ChanResult{

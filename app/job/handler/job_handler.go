@@ -70,6 +70,6 @@ func (j *JobHandler) Delete(ctx echo.Context) error {
 }
 
 func (j *JobHandler) Generate(ctx echo.Context) error {
-	data := jobService.Generate(50)
+	data := jobService.Generate(100)
 	return ctx.JSON(data.Code, data)
 }
