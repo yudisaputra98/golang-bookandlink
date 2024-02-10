@@ -4,6 +4,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/yudisaputra/assignment-bookandlink/app/job/entity"
 	"github.com/yudisaputra/assignment-bookandlink/app/job/services"
+	services2 "github.com/yudisaputra/assignment-bookandlink/app/process/services"
 	"github.com/yudisaputra/assignment-bookandlink/responses"
 	"net/http"
 )
@@ -11,6 +12,7 @@ import (
 type JobHandler struct{}
 
 var jobService = services.NewJobService()
+var processService = services2.NewProcessService()
 
 func NewJobHandler() *JobHandler {
 	return &JobHandler{}

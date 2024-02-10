@@ -1,44 +1,38 @@
 package services
 
 import (
-	"fmt"
 	"github.com/labstack/gommon/log"
 	"github.com/yudisaputra/assignment-bookandlink/app/job/entity"
 	"github.com/yudisaputra/assignment-bookandlink/app/job/repository"
+	"github.com/yudisaputra/assignment-bookandlink/app/job/services"
 	entity2 "github.com/yudisaputra/assignment-bookandlink/app/process/entity"
 	repository2 "github.com/yudisaputra/assignment-bookandlink/app/process/repository"
-	"github.com/yudisaputra/assignment-bookandlink/database"
 	"github.com/yudisaputra/assignment-bookandlink/helpers"
 	"github.com/yudisaputra/assignment-bookandlink/responses"
 	"gorm.io/gorm"
+	"time"
 )
 
-var jobRepository = repository.NewJobRepository()
 var processRepository = repository2.NewProcessRepository()
+var jobRepository = repository.NewJobRepository()
 
-type ChanResult struct {
-	Status bool
-	Error  error
-}
-
-type JobServiceInterface interface {
+type ProcessServiceInterface interface {
 	All() responses.Api
-	Create(data entity.Job) responses.Api
+	Create(data entity2.Process) responses.Api
 	FindById(id string) responses.Api
-	Update(id string, data entity.Job) responses.Api
+	Update(id string, data entity2.Process) responses.Api
 	Delete(id string) responses.Api
-	Generate(total int) responses.Api
-	EnqueueJob() <-chan ChanResult
+	ProcessJob(chanIn <-chan services.ChanResult) <-chan services.ChanResult
 }
 
-type JobService struct{}
+type ProcessService struct{}
 
-func NewJobService() JobServiceInterface {
-	return &JobService{}
+func NewProcessService() ProcessServiceInterface {
+	return &ProcessService{}
 }
 
-func (j *JobService) All() responses.Api {
-	data, err := jobRepository.All()
+func (j *ProcessService) All() responses.Api {
+	data, err := processRepository.All()
 
 	if err != nil {
 		return responses.Api{Code: 400, Status: false, Message: nil, Error: err.Error(), Data: nil}
@@ -47,11 +41,10 @@ func (j *JobService) All() responses.Api {
 	return responses.Api{Code: 200, Status: true, Message: nil, Data: data}
 }
 
-func (j *JobService) Create(data entity.Job) responses.Api {
-	err := jobRepository.Create(entity.Job{
+func (j *ProcessService) Create(data entity2.Process) responses.Api {
+	err := processRepository.Create(entity2.Process{
 		ID:      helpers.Uid(16),
 		JobName: data.JobName,
-		Status:  data.Status,
 	})
 
 	if err != nil {
@@ -61,8 +54,8 @@ func (j *JobService) Create(data entity.Job) responses.Api {
 	return responses.Api{Code: 200, Status: true, Message: "Job berhasil disimpan"}
 }
 
-func (j *JobService) FindById(id string) responses.Api {
-	data, err := jobRepository.FindById(id)
+func (j *ProcessService) FindById(id string) responses.Api {
+	data, err := processRepository.FindById(id)
 	if err != nil {
 		switch err {
 		case gorm.ErrRecordNotFound:
@@ -75,10 +68,9 @@ func (j *JobService) FindById(id string) responses.Api {
 	return responses.Api{Code: 200, Status: true, Data: data}
 }
 
-func (j *JobService) Update(id string, data entity.Job) responses.Api {
-	err := jobRepository.Update(id, entity.Job{
+func (j *ProcessService) Update(id string, data entity2.Process) responses.Api {
+	err := processRepository.Update(id, entity2.Process{
 		JobName: data.JobName,
-		Status:  data.Status,
 	})
 
 	if err != nil {
@@ -88,8 +80,8 @@ func (j *JobService) Update(id string, data entity.Job) responses.Api {
 	return responses.Api{Code: 200, Status: true, Message: "Job berhasil diubah"}
 }
 
-func (j *JobService) Delete(id string) responses.Api {
-	err := jobRepository.Delete(id)
+func (j *ProcessService) Delete(id string) responses.Api {
+	err := processRepository.Delete(id)
 
 	if err != nil {
 		return responses.Api{Code: 400, Status: false, Message: nil, Error: err.Error(), Data: nil}
@@ -98,49 +90,44 @@ func (j *JobService) Delete(id string) responses.Api {
 	return responses.Api{Code: 200, Status: true, Message: "Job berhasil dihapus"}
 }
 
-func (j *JobService) Generate(total int) responses.Api {
-	database.Instance.Migrator().DropTable("jobs")
-	database.Instance.AutoMigrate(&entity.Job{})
-
-	for i := 1; i <= total; i++ {
-		err := jobRepository.Create(entity.Job{
-			ID:      helpers.Uid(16),
-			JobName: fmt.Sprint("Generate job ", i),
-			Status:  0,
-		})
-
-		if err != nil {
-			return responses.Api{Code: 400, Status: false, Message: nil, Error: err.Error(), Data: nil}
-		}
-	}
-
-	return responses.Api{Code: 200, Status: true, Message: "Job berhasil dibuat"}
-}
-
-func (j *JobService) EnqueueJob() <-chan ChanResult {
-	chanOut := make(chan ChanResult)
+func (j *ProcessService) ProcessJob(chanIn <-chan services.ChanResult) <-chan services.ChanResult {
+	chanOut := make(chan services.ChanResult)
 
 	go func() {
-		jobs, err := jobRepository.All()
+		jobs, err := processRepository.All()
 
 		if err != nil {
 			log.Error(err)
 		}
 
-		for _, v := range jobs {
-			err := processRepository.Create(entity2.Process{
-				ID:      v.ID,
-				JobName: v.JobName,
-			})
+		for chanProcess := range chanIn {
+			if chanProcess.Status == true {
+				for k, v := range jobs {
+					err := jobRepository.Update(v.ID, entity.Job{
+						Status: 1,
+					})
 
-			if err != nil {
-				log.Error(err)
+					if err != nil {
+						log.Error(err)
+					}
+
+					// delete process
+					err2 := processRepository.Delete(v.ID)
+
+					if err2 != nil {
+						log.Error(err2)
+					}
+
+					if 4 == k%5 {
+						time.Sleep(3 * time.Second)
+					}
+				}
+
+				chanOut <- services.ChanResult{
+					Status: true,
+					Error:  nil,
+				}
 			}
-		}
-
-		chanOut <- ChanResult{
-			Status: true,
-			Error:  nil,
 		}
 
 		close(chanOut)
