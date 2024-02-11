@@ -7,6 +7,7 @@ import (
 	services2 "github.com/yudisaputra/assignment-bookandlink/app/process/services"
 	"github.com/yudisaputra/assignment-bookandlink/responses"
 	"net/http"
+	"strconv"
 )
 
 type JobHandler struct{}
@@ -20,7 +21,10 @@ func NewJobHandler() *JobHandler {
 
 // all data
 func (j *JobHandler) All(ctx echo.Context) error {
-	data := jobService.All()
+	status := ctx.FormValue("status")
+	statusInt, _ := strconv.Atoi(status)
+
+	data := jobService.All(statusInt)
 	return ctx.JSON(data.Code, data)
 }
 
@@ -70,6 +74,9 @@ func (j *JobHandler) Delete(ctx echo.Context) error {
 }
 
 func (j *JobHandler) Generate(ctx echo.Context) error {
-	data := jobService.Generate(100)
+	total := ctx.FormValue("total")
+	totalInt, _ := strconv.Atoi(total)
+
+	data := jobService.Generate(totalInt)
 	return ctx.JSON(data.Code, data)
 }

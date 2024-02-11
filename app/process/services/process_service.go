@@ -11,6 +11,7 @@ import (
 	"github.com/yudisaputra/assignment-bookandlink/responses"
 	"gorm.io/gorm"
 	"sync"
+	"time"
 )
 
 var processRepository = repository2.NewProcessRepository()
@@ -125,7 +126,7 @@ func (j *ProcessService) ProcessJob(chanIn <-chan services.ChanResult) <-chan se
 
 		for chanProcess := range chanIn {
 			if chanProcess.Status == true {
-				for _, v := range jobs {
+				for k, v := range jobs {
 					err := jobRepository.Update(v.ID, entity.Job{
 						Status: 2,
 					})
@@ -149,9 +150,9 @@ func (j *ProcessService) ProcessJob(chanIn <-chan services.ChanResult) <-chan se
 						log.Error(err3)
 					}
 
-					//if 4 == k%5 {
-					//	time.Sleep(2 * time.Second)
-					//}
+					if 4 == k%5 {
+						time.Sleep(2 * time.Second)
+					}
 				}
 
 				chanOut <- services.ChanResult{

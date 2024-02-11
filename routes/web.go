@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/yudisaputra/assignment-bookandlink/app/job/handler"
 	handler2 "github.com/yudisaputra/assignment-bookandlink/app/process/handler"
 )
@@ -14,6 +15,10 @@ func Route() {
 
 	route := r.Group("api")
 	{
+		route.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+			AllowOrigins: []string{"*"},
+		}))
+
 		job := route.Group("/jobs")
 		{
 			job.GET("", jobHandler.All)

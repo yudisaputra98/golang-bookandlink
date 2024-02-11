@@ -10,6 +10,7 @@ import (
 	"github.com/yudisaputra/assignment-bookandlink/helpers"
 	"github.com/yudisaputra/assignment-bookandlink/responses"
 	"gorm.io/gorm"
+	"time"
 )
 
 var jobRepository = repository.NewJobRepository()
@@ -21,7 +22,7 @@ type ChanResult struct {
 }
 
 type JobServiceInterface interface {
-	All() responses.Api
+	All(status int) responses.Api
 	Create(data entity.Job) responses.Api
 	FindById(id string) responses.Api
 	Update(id string, data entity.Job) responses.Api
@@ -36,8 +37,8 @@ func NewJobService() JobServiceInterface {
 	return &JobService{}
 }
 
-func (j *JobService) All() responses.Api {
-	data, err := jobRepository.All()
+func (j *JobService) All(status int) responses.Api {
+	data, err := jobRepository.All(status)
 
 	if err != nil {
 		return responses.Api{Code: 400, Status: false, Message: nil, Error: err.Error(), Data: nil}
@@ -126,7 +127,7 @@ func (j *JobService) EnqueueJob() <-chan ChanResult {
 			log.Error(err)
 		}
 
-		for _, v := range jobs {
+		for k, v := range jobs {
 			err := processRepository.Create(entity2.Process{
 				ID:      v.ID,
 				JobName: v.JobName,
@@ -142,6 +143,10 @@ func (j *JobService) EnqueueJob() <-chan ChanResult {
 
 			if err2 != nil {
 				log.Error(err2)
+			}
+
+			if 4 == k%5 {
+				time.Sleep(2 * time.Second)
 			}
 		}
 
