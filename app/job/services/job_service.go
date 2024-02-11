@@ -10,7 +10,6 @@ import (
 	"github.com/yudisaputra/assignment-bookandlink/helpers"
 	"github.com/yudisaputra/assignment-bookandlink/responses"
 	"gorm.io/gorm"
-	"time"
 )
 
 var jobRepository = repository.NewJobRepository()
@@ -22,7 +21,7 @@ type ChanResult struct {
 }
 
 type JobServiceInterface interface {
-	All(status int) responses.Api
+	All(status string) responses.Api
 	Create(data entity.Job) responses.Api
 	FindById(id string) responses.Api
 	Update(id string, data entity.Job) responses.Api
@@ -37,7 +36,7 @@ func NewJobService() JobServiceInterface {
 	return &JobService{}
 }
 
-func (j *JobService) All(status int) responses.Api {
+func (j *JobService) All(status string) responses.Api {
 	data, err := jobRepository.All(status)
 
 	if err != nil {
@@ -106,7 +105,8 @@ func (j *JobService) Generate(total int) responses.Api {
 		err := jobRepository.Create(entity.Job{
 			ID:      helpers.Uid(16),
 			JobName: fmt.Sprint("Generate job ", helpers.Uid(20)),
-			Status:  0,
+			Status:  "NEW",
+			Attempt: 1,
 		})
 
 		if err != nil {
@@ -127,7 +127,8 @@ func (j *JobService) EnqueueJob() <-chan ChanResult {
 			log.Error(err)
 		}
 
-		for k, v := range jobs {
+		for _, v := range jobs {
+			// push to process queue
 			err := processRepository.Create(entity2.Process{
 				ID:      v.ID,
 				JobName: v.JobName,
@@ -137,17 +138,18 @@ func (j *JobService) EnqueueJob() <-chan ChanResult {
 				log.Error(err)
 			}
 
+			// update status job
 			err2 := jobRepository.Update(v.ID, entity.Job{
-				Status: 1,
+				Status: "QUEUE",
 			})
 
 			if err2 != nil {
 				log.Error(err2)
 			}
 
-			if 4 == k%5 {
-				time.Sleep(2 * time.Second)
-			}
+			//if 4 == k%5 {
+			//	time.Sleep(2 * time.Second)
+			//}
 		}
 
 		chanOut <- ChanResult{

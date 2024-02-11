@@ -6,7 +6,7 @@ import (
 )
 
 type JobRepositoryInterface interface {
-	All(status int) (entity.Jobs, error)
+	All(status string) (entity.Jobs, error)
 	Create(data entity.Job) error
 	FindById(id string) (entity.Job, error)
 	Update(id string, data entity.Job) error
@@ -20,7 +20,7 @@ func NewJobRepository() JobRepositoryInterface {
 	return &JobRepository{}
 }
 
-func (j *JobRepository) All(status int) (entity.Jobs, error) {
+func (j *JobRepository) All(status string) (entity.Jobs, error) {
 	var jobs entity.Jobs
 
 	err := database.Instance.Where("status = ?", status).Order("created_at desc").Find(&jobs)
@@ -54,6 +54,6 @@ func (j *JobRepository) Delete(id string) error {
 func (j *JobRepository) GetNotDone() (entity.Jobs, error) {
 	var jobs entity.Jobs
 
-	err := database.Instance.Where("status = 0").Order("created_at desc").Find(&jobs)
+	err := database.Instance.Where("status = 'NEW'").Order("created_at desc").Find(&jobs)
 	return jobs, err.Error
 }

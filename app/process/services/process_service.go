@@ -11,7 +11,6 @@ import (
 	"github.com/yudisaputra/assignment-bookandlink/responses"
 	"gorm.io/gorm"
 	"sync"
-	"time"
 )
 
 var processRepository = repository2.NewProcessRepository()
@@ -127,15 +126,39 @@ func (j *ProcessService) ProcessJob(chanIn <-chan services.ChanResult) <-chan se
 		for chanProcess := range chanIn {
 			if chanProcess.Status == true {
 				for k, v := range jobs {
-					err := jobRepository.Update(v.ID, entity.Job{
-						Status: 2,
-					})
+					// delete process
+					err := processRepository.Delete(v.ID)
 
 					if err != nil {
 						log.Error(err)
+					}
+
+					// schema if fail process queue
+					if k == 1 || k == 8 || k == 15 {
+						job, _ := jobRepository.FindById(v.ID)
 
 						err2 := jobRepository.Update(v.ID, entity.Job{
-							Status: 0,
+							Status:  "QUEUE",
+							Attempt: job.Attempt + 1,
+						})
+
+						if err2 != nil {
+							log.Error(err2)
+						}
+
+						err3 := processRepository.Create(entity2.Process{
+							ID:      v.ID,
+							JobName: v.JobName,
+						})
+
+						if err3 != nil {
+							log.Error(err3)
+						}
+					} else {
+						// schema if success
+						// process queue
+						err2 := jobRepository.Update(v.ID, entity.Job{
+							Status: "SUCCESS",
 						})
 
 						if err2 != nil {
@@ -143,16 +166,9 @@ func (j *ProcessService) ProcessJob(chanIn <-chan services.ChanResult) <-chan se
 						}
 					}
 
-					// delete process
-					err3 := processRepository.Delete(v.ID)
-
-					if err3 != nil {
-						log.Error(err3)
-					}
-
-					if 4 == k%5 {
-						time.Sleep(2 * time.Second)
-					}
+					//if 4 == k%5 {
+					//	time.Sleep(2 * time.Second)
+					//}
 				}
 
 				chanOut <- services.ChanResult{

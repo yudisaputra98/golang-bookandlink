@@ -25,7 +25,7 @@ func main() {
 	}
 	// start cronjob
 	job := gocron.NewScheduler(loc)
-	job.Every("30s").Do(taskRunningService.RunQueue)
+	job.Every("5s").Do(taskRunningService.RunQueue)
 	job.StartAsync()
 
 	// route

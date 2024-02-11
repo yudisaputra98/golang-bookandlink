@@ -22,9 +22,7 @@ func NewJobHandler() *JobHandler {
 // all data
 func (j *JobHandler) All(ctx echo.Context) error {
 	status := ctx.FormValue("status")
-	statusInt, _ := strconv.Atoi(status)
-
-	data := jobService.All(statusInt)
+	data := jobService.All(status)
 	return ctx.JSON(data.Code, data)
 }
 
